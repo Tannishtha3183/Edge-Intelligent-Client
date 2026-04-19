@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Baseline vs Proposed Comparison{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">Client Comparison</h1>
+<p class="text-muted">
+  Each chart compares three clients across all network scenarios: 
+  <strong>Baseline</strong> (naive retries), 
+  <strong>Proposed No Cache</strong> (ablation), and 
+  <strong>Proposed Edge-Intelligent</strong> (decision engine + cache + sync).
+  The proposed client consistently reduces hard failures and data loss, uses fewer retries,
+  and achieves the highest composite reliability index, especially under intermittent
+  and mobile-fluctuation conditions.
+</p>
+
+<div class="row">
+  {% for metric, url, desc in charts %}
+    <div class="col-md-6 mb-4">
+      <div class="card" style="background-color:#F9F5EC;">
+        <div class="card-body">
+          <h5 class="card-title">{{ metric }}</h5>
+          {% if desc %}
+            <p class="card-text text-muted">{{ desc }}</p>
+          {% endif %}
+          <img src="{{ url }}" class="img-fluid" alt="{{ metric }} chart">
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="mt-3">
+  <h5>How to read these charts</h5>
+  <ul>
+    <li><strong>Failure rate</strong>: In intermittent and mobile-fluctuation scenarios, the Baseline bar is highest, the Proposed No Cache is lower, and the Proposed Edge-Intelligent bar is lowest. This shows that edge intelligence plus caching almost eliminates permanent failures compared to naive retries.</li>
+    <li><strong>Retries</strong>: Baseline needs many more retries in bad networks, which wastes bandwidth and battery. The proposed client maintains higher success with fewer retries, meaning it sends only when the network quality is acceptable instead of flooding the link.</li>
+    <li><strong>Average latency</strong>: Under high_latency and mobile_fluctuation, the baseline client’s latency grows significantly, while the proposed client stays closer to stable performance because it avoids sending during obviously bad windows.</li>
+    <li><strong>Success rate and data loss</strong>: Across realistic scenarios, the proposed client keeps success rate near 1 while data loss stays minimal. Baseline loses more operations permanently, which would correspond to dropped orders or updates in a real app.</li>
+    <li><strong>Recovery time</strong>: When connectivity returns after an outage, the proposed client flushes cached operations quickly without causing a retry storm. This gives a short but well-bounded recovery_time_ms, indicating fast convergence back to a consistent state.</li>
+    <li><strong>Reliability index</strong>: This composite score is highest for the proposed client in all partial-connectivity scenarios, with the no-cache variant in the middle and baseline lowest. It visually summarizes that the edge-intelligent design provides the best overall reliability.</li>
+  </ul>
+</div>
+
+
+  <h2 class="mt-4">Summary Interpretation</h2>
+  <p>
+    Across synthetic network scenarios, the edge-intelligent client systematically trades off retries and latency to
+    reduce failure rate and data loss compared to the baseline that blindly sends requests.
+  </p>
+  <p>
+    In stable networks, both clients perform similarly, showing that the proposed layer does not hurt performance when
+    conditions are good. Under intermittent and mobile-like conditions, the proposed client achieves higher success
+    rates with fewer permanent losses by caching and syncing operations when the network recovers.
+  </p>
+
+{% endblock %}

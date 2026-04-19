@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Live Monitor{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">
+    Live Network Monitor
+    <small class="text-muted" id="scenario-label"></small>
+  </h1>
+
+  <div class="row" id="metrics-cards">
+    <div class="col-md-4 mb-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Latency</h5>
+          <p class="card-text"><span id="latency">–</span> ms</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Packet Loss</h5>
+          <p class="card-text"><span id="loss">–</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Disconnected</h5>
+          <p class="card-text"><span id="disc">–</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Bandwidth</h5>
+          <p class="card-text"><span id="bw">–</span> kbps</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Quality Score</h5>
+          <p class="card-text"><span id="q">–</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="mt-4 mb-3">Real-time Network Trends</h2>
+  <div class="card">
+    <div class="card-body">
+      <canvas id="networkChart" height="120"></canvas>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content_scripts %}
+<script>
+  let chart = null;
+  const maxPoints = 40;
+  const labels = [];
+  const latencyData = [];
+  const qualityData = [];
+
+  function initChart() {
+    const canvas = document.getElementById("networkChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: "Latency (ms)",
+            data: latencyData,
+            borderColor: "#4B8F8C",
+            backgroundColor: "rgba(75, 143, 140, 0.0)",
+            borderWidth: 2,
+            tension: 0.25,
+            pointRadius: 2,
+            pointHoverRadius: 4,
+            fill: false,
+            yAxisID: "y",
+            spanGaps: true,
+          },
+          {
+            label: "Quality Score",
+            data: qualityData,
+            borderColor: "#C76F3B",
+            backgroundColor: "rgba(199, 111, 59, 0.0)",
+            borderWidth: 2,
+            tension: 0.25,
+            pointRadius: 2,
+            pointHoverRadius: 4,
+            fill: false,
+            yAxisID: "y1",
+            spanGaps: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            type: "linear",
+            position: "left",
+            title: { display: true, text: "Latency (ms)" },
+          },
+          y1: {
+            type: "linear",
+            position: "right",
+            min: 0,
+            max: 1,
+            title: { display: true, text: "Quality Score" },
+            grid: { drawOnChartArea: false },
+          },
+        },
+      },
+    });
+  }
+
+  async function fetchState() {
+    const resp = await fetch("/monitor/state");
+    const data = await resp.json();
+
+    // Scenario label
+    if (data.scenario !== undefined) {
+      document.getElementById("scenario-label").innerText = `(${data.scenario})`;
+    }
+
+    // Text values
+    document.getElementById("latency").innerText = data.latency_ms.toFixed(1);
+    document.getElementById("loss").innerText =
+      (data.packet_loss * 100).toFixed(1) + "%";
+    document.getElementById("disc").innerText = data.is_disconnected ? "Yes" : "No";
+    document.getElementById("bw").innerText = data.bandwidth_kbps.toFixed(1);
+
+    // Color-coded disconnected state
+    const discSpan = document.getElementById("disc");
+    if (data.is_disconnected) {
+      discSpan.classList.add("metric-bad");
+      discSpan.classList.remove("metric-good");
+    } else {
+      discSpan.classList.add("metric-good");
+      discSpan.classList.remove("metric-bad");
+    }
+
+    // Color-coded quality score
+    const qSpan = document.getElementById("q");
+    const q = data.quality_score;
+    qSpan.innerText = q.toFixed(3);
+    qSpan.classList.remove("metric-good", "metric-warn", "metric-bad");
+    if (q >= 0.7) {
+      qSpan.classList.add("metric-good");
+    } else if (q >= 0.3) {
+      qSpan.classList.add("metric-warn");
+    } else {
+      qSpan.classList.add("metric-bad");
+    }
+
+    // Time label and series updates
+    const now = new Date();
+    const label = now.toLocaleTimeString([], {
+      hour12: false,
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    labels.push(label);
+    latencyData.push(data.latency_ms);
+    qualityData.push(data.quality_score);
+
+    if (labels.length > maxPoints) {
+      labels.shift();
+      latencyData.shift();
+      qualityData.shift();
+    }
+
+    if (chart) {
+      chart.update();
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    initChart();
+    fetchState();
+    setInterval(fetchState, 1000);
+  });
+</script>
+{% endblock %}

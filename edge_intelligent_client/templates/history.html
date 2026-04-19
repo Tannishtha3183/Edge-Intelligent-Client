@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}History{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">Simulation History</h1>
+
+  {% if scenario_history %}
+    <div class="card" style="background-color: #F9F5EC;">
+      <div class="card-body">
+        <h5 class="card-title">Scenario changes</h5>
+        <ul class="mb-0">
+          {% for entry in scenario_history %}
+            <li>
+              <strong>{{ entry.scenario }}</strong> – {{ entry.note }}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  {% else %}
+    <p class="text-muted">No history yet. Change scenarios in the Simulator to see entries here.</p>
+  {% endif %}
+{% endblock %}

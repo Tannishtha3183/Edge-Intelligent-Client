@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Simulator Control{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">Simulator Control</h1>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">Network Scenario</h5>
+      <p class="card-text">Current scenario: <strong>{{ current_scenario }}</strong></p>
+
+      <div class="row g-3 align-items-center mb-3">
+        <div class="col-auto">
+          <label for="scenario" class="col-form-label">Choose scenario:</label>
+        </div>
+        <div class="col-auto">
+          <select id="scenario" class="form-select">
+            <option value="stable">Stable</option>
+            <option value="high_latency">High Latency</option>
+            <option value="intermittent">Intermittent</option>
+            <option value="complete_drop">Complete Drop</option>
+            <option value="mobile_fluctuation">Mobile-like Fluctuation</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button id="apply" class="btn btn-primary">Apply</button>
+        </div>
+      </div>
+
+      <small class="text-muted">
+        Each scenario configures latency, jitter, packet loss, disconnections, and bandwidth patterns.
+      </small>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content_scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const applyBtn = document.getElementById("apply");
+    if (!applyBtn) return;
+
+    applyBtn.onclick = async function () {
+      const scenarioSelect = document.getElementById("scenario");
+      const scenario = scenarioSelect.value;
+      const resp = await fetch("/simulator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scenario }),
+      });
+      const data = await resp.json();
+      alert("Scenario set to " + data.scenario);
+      window.location.reload();
+    };
+  });
+</script>
+{% endblock %}
